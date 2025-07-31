@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>赛博朋克人生模拟器 v6.2.4 - 运行逻辑强化</title> 
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <style>
+        /* --- Styles unchanged --- */
+        :root{--bg-gradient-start:#0b0116;--neon-cyan:#00e0ff;--neon-lime:#aaff00;--neon-pink:#f0f;--neon-purple:#9d20e0;--text-light:#e8e8e8;--text-medium:#a0a0a0;--card-bg:linear-gradient(145deg, rgba(40,15,60,0.95),rgba(15,20,50,0.95));--card-hover-bg:linear-gradient(145deg, rgba(0,224,255,0.25),rgba(170,255,0,0.25));--button-shadow:0 0 8px rgba(157,32,224,0.7);--notification-shadow:0 2px 5px rgba(0,0,0,0.3);--matrix-bg-alpha:0.08;--matrix-font-size-border:14px;--matrix-font-size-game:16px;--matrix-interval:50;}
+        body{font-family:'Poppins',sans-serif;background:var(--bg-gradient-start);color:var(--text-light);display:flex;justify-content:center;align-items:flex-start;min-height:100vh;margin:0;padding:2rem 1rem;overflow-y:auto;overflow-x:hidden;position:relative;}
+        .container{background:rgba(5,1,10,0.92);border:1px solid var(--neon-pink);padding:clamp(1rem, 4vw, 2rem);border-radius:1rem;box-shadow:0 0 20px var(--neon-pink),inset 0 0 10px rgba(255,0,255,0.3);max-width:800px;width:95%;text-align:center;}
+        h1{font-family:'Press Start 2P',monospace;color:var(--neon-lime);text-shadow:0 0 10px var(--neon-lime),0 0 5px var(--neon-lime);margin-bottom:0.5rem; font-size: clamp(1.4rem, 4.5vw, 2rem);}
+        #title-border{background:#000;height:30px;margin-top:0.8rem;margin-bottom:1.5rem;border-radius:5px;overflow:hidden;position:relative;border:1px solid var(--neon-lime);box-shadow:0 0 8px var(--neon-lime);}
+        #matrixCanvasBorder{position:absolute;top:0;left:0;width:100%;height:100%;display:block;}
+        .visual-area{display:flex;flex-direction:column;align-items:center;gap:1rem;margin-bottom:1.5rem;}
+        #gameCanvas{background:rgba(0,0,0,0.9);border:1px solid var(--neon-cyan);border-radius:0.8rem;width:100%;max-width:650px;height:230px;box-shadow:0 0 10px var(--neon-cyan),inset 0 0 5px rgba(0,224,255,0.3);position:relative;overflow:hidden;}
+        #predictionChartContainer{width:100%;max-width:550px; background:rgba(0,0,0,0.6);border:1px dashed var(--neon-purple);border-radius:0.5rem;padding:0.5rem;min-height:230px; display:flex;justify-content:center;align-items:center;color:var(--text-medium);font-style:italic;font-size:0.9rem;transition:background 0.3s ease;}
+        #predictionChartContainer.has-chart{background:rgba(0,0,0,0.8);border:1px solid var(--neon-purple);padding:1rem;}
+        #predictionChart{display:block;max-height:210px;width:100%;}
+        #message-box{background:linear-gradient(135deg, rgba(5,0,10,0.9),rgba(0,2,10,0.9));padding:1rem;margin-bottom:1.5rem;border-radius:0.6rem;border:1px solid rgba(255,255,255,0.1);font-size:0.95rem;line-height:1.6;color:var(--text-light);min-height:7em;}
+        #stats-box{background:var(--card-bg);padding:0.8rem 1rem;margin-bottom:1.5rem;border-radius:0.8rem;border:1px solid var(--neon-purple);display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:0.8rem 1.2rem; box-shadow:inset 0 0 5px rgba(157,32,224,0.5);}
+        #stats-box p{margin:0;font-size:0.8rem;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        #stats-box span{color:var(--neon-cyan);font-weight:700;float:right;margin-left:5px;}
+        #stats-box p:last-child { grid-column: span 1; }
+        .last-chance-button { border-color: var(--neon-pink) !important; box-shadow: 0 0 10px var(--neon-pink) !important; animation: pulsePink 1.5s infinite alternate; }
+        @keyframes pulsePink { from { box-shadow: 0 0 5px var(--neon-pink); } to { box-shadow: 0 0 15px var(--neon-pink), 0 0 5px #ff55ff; } }
+        .button-container{display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1.2rem;margin-bottom:1rem;}
+        .game-button{background:var(--card-bg);border:1px solid var(--neon-purple);border-radius:8px;padding:1rem 0.8rem;color:var(--text-light);font-size:0.9rem;font-weight:600;cursor:pointer;transition:all 0.25s ease-out;box-shadow:var(--button-shadow);position:relative;overflow:hidden;text-align:center;}
+        .game-button::before{content:"";position:absolute;top:50%;left:50%;width:0;height:0;background:rgba(0,224,255,0.3);border-radius:50%;transform:translate(-50%,-50%);transition:width 0.3s ease,height 0.3s ease;z-index:0;}
+        .game-button:hover::before{width:250%;height:250%;}
+        .game-button span{position:relative;z-index:1;}
+        .game-button:hover{background:var(--card-hover-bg);border-color:var(--neon-cyan);transform:translateY(-5px) scale(1.02);box-shadow:0 5px 15px rgba(0,224,255,0.4);}
+        .game-button:active{transform:translateY(-2px) scale(1.0);}
+        .game-button[disabled]{opacity:0.5;cursor:not-allowed;background:#555;border-color:#777;box-shadow:none;}
+        .game-button[disabled]:hover{transform:none;box-shadow:none;background:#555;border-color:#777;}
+        .game-button[disabled]::before{width:0;height:0;}
+        #notification-area{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:0.8rem;z-index:1000;width:90%;max-width:600px;}
+        .notification{padding:0.8rem 1.5rem;border-radius:20px;font-size:0.9rem;animation:slideInUp 0.4s ease forwards,fadeOut 0.4s ease 3.5s forwards;opacity:0;box-shadow:var(--notification-shadow);width:auto;max-width:100%;text-align:center;background-color:#333;color:#fff;}
+        .notification.success{background-color:#4CAF50;color:white;} .notification.error{background-color:#f44336;color:white;} .notification.info{background-color:#2196F3;color:white;} .notification.warning{background-color:#ff9800;color:black;}
+        @keyframes slideInUp{from{transform:translateY(50px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+        @keyframes fadeOut{from{opacity:1;}to{opacity:0;}}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>赛博朋克人生模拟器 v6.2.4</h1>
+        <div id="title-border"><canvas id="matrixCanvasBorder"></canvas></div>
+        <div class="visual-area">
+             <canvas id="gameCanvas"></canvas>
+             <div id="predictionChartContainer">在此处查看未来数据流...</div>
+        </div>
+        <div id="message-box">正在初始化链接... 请稍候...</div>
+        <div id="stats-box">
+            <p>年龄: <span id="age">--</span></p> <p>健康: <span id="health">--</span></p>
+            <p>幸福度: <span id="happiness">--</span></p> <p>神经币: <span id="neural-credits">--</span></p>
+            <p>智力: <span id="intelligence">--</span></p> <p>魅力: <span id="charisma">--</span></p>
+            <p>声望: <span id="reputation">--</span></p> <p>传承: <span id="legacy">--</span></p>
+            <p>掌握科技: <span id="tech-count">0</span></p>
+        </div>
+        <div class="button-container" id="button-container">
+            <button id="start-button" class="game-button"><span>链接意识</span></button>
+        </div>
+    </div>
+    <div id="notification-area"></div>
+
+    <script>
+        // --- Game State ---
+        let 年龄=0, 健康=100, 幸福度=100, 神经币=1000, 智力=50, 魅力=50, 声望=0, 传承=0;
+        let 背景='', 游戏开始=false, 未来预言={剩余回合:0,结果:null}, 玄学模式=false;
+        let 当前回合=1, lifeScore=0, choiceHistory=[], predictionChartInstance=null;
+        let hasCycleClue = false;
+        let acquiredTech = [];
+        let lastChanceTriggeredThisTurn = false;
+
+        // --- DOM Elements ---
+        const gameCanvas=document.getElementById('gameCanvas'), gameCtx=gameCanvas.getContext('2d'); const messageBox=document.getElementById('message-box'); const buttonContainer=document.getElementById('button-container'); const startButton=document.getElementById('start-button'); const notificationArea=document.getElementById('notification-area'); const stats={年龄:document.getElementById('age'), 健康:document.getElementById('health'), 幸福度:document.getElementById('happiness'), 神经币:document.getElementById('neural-credits'), 智力:document.getElementById('intelligence'), 魅力:document.getElementById('charisma'), 声望:document.getElementById('reputation'), 传承:document.getElementById('legacy'), 掌握科技:document.getElementById('tech-count')}; const predictionChartContainer=document.getElementById('predictionChartContainer'); const matrixCanvasBorder=document.getElementById('matrixCanvasBorder'), matrixCtxBorder=matrixCanvasBorder.getContext('2d');
+
+        // --- Matrix Variables & Functions (Stable) ---
+        let matrixIntervalIdBorder = null, matrixColumnsBorder, matrixDropsBorder; let matrixIntervalIdGame = null, matrixColumnsGame, matrixDropsGame; const matrixChars = "アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<!@#$%^&*()_+=-{}[]|;:'<>,.?/~>"; const matrixFontSizeBorder=14, matrixFontSizeGame=16, matrixBgAlpha=0.08, matrixSpeed=50;
+        function debounce(func, wait) { let timeout; return function(...args) { const context = this; clearTimeout(timeout); timeout = setTimeout(() => func.apply(context, args), wait); }; }
+        function setupMatrix(canvas, ctx, columnsVarRef, dropsVarRef, fontSize) { if (!canvas || !ctx) return; canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; columnsVarRef.value = Math.max(1, Math.floor(canvas.width / fontSize)); dropsVarRef.value = []; for (let x = 0; x < columnsVarRef.value; x++) { dropsVarRef.value[x] = Math.floor(Math.random() * canvas.height / fontSize); } }
+        function drawMatrix(canvas, ctx, columnsVarRef, dropsVarRef, fontSize) { if (!canvas || !ctx || !dropsVarRef || !dropsVarRef.value || dropsVarRef.value.length === 0 || canvas.height <= 0 || !canvas.isConnected) { if(canvas === gameCanvas && matrixIntervalIdGame !== null) { clearInterval(matrixIntervalIdGame); matrixIntervalIdGame = null;} if(canvas === matrixCanvasBorder && matrixIntervalIdBorder !== null) { clearInterval(matrixIntervalIdBorder); matrixIntervalIdBorder = null;} return; } try { ctx.fillStyle = `rgba(0, 0, 0, ${matrixBgAlpha})`; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--neon-lime').trim(); ctx.font = fontSize + 'px monospace'; for (let i = 0; i < dropsVarRef.value.length; i++) { if (dropsVarRef.value[i] === undefined) continue; const text = matrixChars[Math.floor(Math.random() * matrixChars.length)]; ctx.fillText(text, i * fontSize, dropsVarRef.value[i] * fontSize); if (dropsVarRef.value[i] * fontSize > canvas.height && Math.random() > 0.975) dropsVarRef.value[i] = 0; dropsVarRef.value[i]++; } } catch (e) { console.error("Error during matrix draw:", e); if(canvas === gameCanvas && matrixIntervalIdGame !== null) { clearInterval(matrixIntervalIdGame); matrixIntervalIdGame = null;} if(canvas === matrixCanvasBorder && matrixIntervalIdBorder !== null) { clearInterval(matrixIntervalIdBorder); matrixIntervalIdBorder = null;}} }
+        function setupBorderMatrix() { try {let c={value:0},d={value:[]};setupMatrix(matrixCanvasBorder,matrixCtxBorder,c,d,matrixFontSizeBorder);matrixColumnsBorder=c.value;matrixDropsBorder=d.value;if(matrixIntervalIdBorder===null){if(matrixCtxBorder)matrixCtxBorder.clearRect(0,0,matrixCanvasBorder.width, matrixCanvasBorder.height);matrixIntervalIdBorder=setInterval(()=>drawMatrix(matrixCanvasBorder,matrixCtxBorder,{value:matrixColumnsBorder},{value:matrixDropsBorder},matrixFontSizeBorder),matrixSpeed);} } catch(e){ console.error("Failed setupBorderMatrix:", e); if(matrixIntervalIdBorder !== null) { clearInterval(matrixIntervalIdBorder); matrixIntervalIdBorder = null;} } }
+        function setupGameMatrix() { try {let c={value:0},d={value:[]};setupMatrix(gameCanvas,gameCtx,c,d,matrixFontSizeGame);matrixColumnsGame=c.value;matrixDropsGame=d.value; if (游戏开始) { if (matrixIntervalIdGame === null) { if(gameCtx) gameCtx.clearRect(0,0, gameCanvas.width, gameCanvas.height); matrixIntervalIdGame = setInterval(() => drawMatrix(gameCanvas, gameCtx, { value: matrixColumnsGame }, { value: matrixDropsGame }, matrixFontSizeGame), matrixSpeed); } } else { if (matrixIntervalIdGame !== null) { clearInterval(matrixIntervalIdGame); matrixIntervalIdGame = null; } } } catch(e) { console.error("Failed setupGameMatrix:", e); if(matrixIntervalIdGame !== null) { clearInterval(matrixIntervalIdGame); matrixIntervalIdGame = null;} }}
+        const handleResizeBorderMatrix = debounce(setupBorderMatrix, 250); const handleResizeGameMatrix = debounce(setupGameMatrix, 250); window.addEventListener('resize', handleResizeBorderMatrix); window.addEventListener('resize', handleResizeGameMatrix);
+
+        // --- Enhanced Background Definitions (Stable) ---
+        const backgrounds = { street_urchin:{id:'street_urchin',name:"街头孤儿",ageRange:[16,18],description:"夜之城底层长大，擅长生存，对体制充满怀疑。",modifiers:{神经币:-500,智力:+5,魅力:-5,健康:+5,幸福度:-10,声望:-2}}, corp_kid:{id:'corp_kid',name:"公司子弟",ageRange:[18,22],description:"在高塔精英教育下成长，熟悉规则，但也背负期望。",modifiers:{神经币:+2000,智力:+10,魅力:+5,健康:-5,幸福度:+5,声望:+5}}, media_intern:{id:'media_intern',name:"媒体实习生",ageRange:[18,21],description:"游走于信息流边缘，渴望真相或头条，对网络敏感。",modifiers:{神经币:0,智力:+5,魅力:+10,健康:0,幸福度:0,声望:+2}}, factory_drone:{id:'factory_drone',name:"工厂劳工",ageRange:[17,20],description:"巨型工厂流水线的一员，渴望摆脱枯燥，体能较好。",modifiers:{神经币:-200,智力:-5,魅力:0,健康:+10,幸福度:-15}}, bio_modded_youth:{id:'bio_modded_youth',name:"生化改造者",ageRange:[16,19],description:"经早期基因或义体改造，与众不同但也可能不稳定。",modifiers:{神经币:+500,智力:0,魅力:+5,健康:-10,幸福度:+5,声望:-3}}, nomad_tech_scav:{id:'nomad_tech_scav', name:"游民科技拾荒者", ageRange:[17, 21], description:"在废土和城市边缘寻找可用技术，动手能力强，不信任公司。", modifiers:{神经币:-100, 智力:+8, 魅力:-3, 健康:+8, 幸福度:-5, 声望:-5}}, academic_prodigy:{id:'academic_prodigy', name:"学术天才", ageRange:[16, 19], description:"很早就展现出非凡智力，专注于理论研究，社交可能生疏。", modifiers:{神经币:+500, 智力:+15, 魅力:-8, 健康:-5, 幸福度:+5, 声望:+3}}, };
+
+        // --- Prime Number Utility (Stable) ---
+        function isPrime(num) { if (num <= 1) return false; if (num <= 3) return true; if (num % 2 === 0 || num % 3 === 0) return false; let i = 5; while (i * i <= num) { if (num % i === 0 || num % (i + 2) === 0) return false; i += 6; } return true; }
+
+        // --- Utility Functions (Stable) ---
+        function 更新状态(dH=0, dHa=0, dNC=0, dI=0, dC=0, dR=0, dL=0){ let prevHealth=健康; let nH=Math.max(0,Math.min(100,健康+dH)); let nHa=Math.max(0,Math.min(100,幸福度+dHa)); let nC=Math.max(0,神经币+dNC); let nI=Math.max(0,Math.min(100,智力+dI)); let nCh=Math.max(0,Math.min(100,魅力+dC)); let nR=Math.max(-100,Math.min(100,声望+dR)); let nL=Math.max(0,Math.min(999,传承+dL)); 健康=nH;幸福度=nHa;神经币=nC;智力=nI;魅力=nCh;声望=nR;传承=nL; requestAnimationFrame(()=>{ try { if(stats.年龄)stats.年龄.textContent=年龄; if(stats.健康)stats.健康.textContent=健康; if(stats.幸福度)stats.幸福度.textContent=幸福度; if(stats.神经币)stats.神经币.textContent=神经币.toLocaleString(); if(stats.智力)stats.智力.textContent=智力; if(stats.魅力)stats.魅力.textContent=魅力; if(stats.声望)stats.声望.textContent=声望; if(stats.传承)stats.传承.textContent=传承; if(stats.掌握科技)stats.掌握科技.textContent=acquiredTech.length; } catch (e) { console.error("Error updating stats UI:", e); } }); if(健康<=0 && 游戏开始 && prevHealth > 0){ console.log(`DEBUG: Game Over triggered by health drop (${prevHealth} -> ${健康})`); setTimeout(()=>显示游戏结束("生命信号中断..."),100); } }
+        function 显示通知(message,type='success'){ if(!notificationArea) return; try { const notification=document.createElement('div');notification.className=`notification ${type}`;notification.textContent=message; notificationArea.appendChild(notification); const displayTime=3500, fadeTime=400; setTimeout(()=>{ notification.style.animation=`fadeOut ${fadeTime/1000}s ease forwards`; setTimeout(()=>notification.remove(),fadeTime); },displayTime); } catch (e) { console.error("Error displaying notification:", e); }}
+        function 清除按钮(){ try {buttonContainer.innerHTML='';} catch (e) {console.error("Error clearing buttons:", e);} }
+        let lastStatsForScore=''; let cachedLifeScore=0; function calculateLifeScore(){ const statKey=`${健康}-${幸福度}-${智力}-${魅力}-${声望}-${传承}`; if(lastStatsForScore!==statKey){ cachedLifeScore=(健康*1.1+幸福度*1.1+智力*1.0+魅力*0.9+声望*0.5+传承*0.7)/6; lastStatsForScore=statKey;} lifeScore=Math.round(cachedLifeScore*10)/10; return lifeScore;}
+
+        // --- Dynamic Message Logic (Stable) ---
+        function getDynamicMessage(){ calculateLifeScore(); let baseMsg=""; const bgData=backgrounds[背景]||{name:'背景未知'}; if(年龄<20) baseMsg=`年少的你在${背景==='nomad_tech_scav'?'废土边缘':'夜之城'}探索，${bgData.name}的经历正塑造你。`; else if(年龄<40) baseMsg=`步入${年龄<30?'青年':'中年'}，${bgData.name}的身份烙印渐浅。是时候定义自己的道路。`; else if(年龄<60) baseMsg=`${年龄}岁，夜之城沉浮多年。是坚持初衷，还是随波逐流？`; else baseMsg=`${年龄}岁步入晚年。是安享晚年，追求不朽，还是探索终极？`; if(lifeScore>80) baseMsg+=" 你似乎游刃有余，成为了时代的弄潮儿。"; else if(lifeScore>60) baseMsg+=" 你已站稳脚跟，未来充满可能。"; else if(lifeScore<40) baseMsg+=" 生存压力巨大，每一步都需谨慎。"; if(acquiredTech.includes('adv_ai_collab') && 智力 > 85) baseMsg += " 与高级AI的合作日益加深，智力边界不断拓展。"; if(acquiredTech.includes('gene_opt_basic') && 健康 < 70) baseMsg += " 基础基因优化延缓了衰老，但时间的侵蚀仍不可避免。"; if(choiceHistory.includes('申请火星抽签') && 年龄 > 50) baseMsg += " 前往红色星球的梦想，随着年岁增长，愈发显得渺茫或迫切..."; if(幸福度<30 && 年龄>40) baseMsg+=" 霓虹灯再亮，也难掩内心的空洞。"; if(hasCycleClue && 年龄>55) baseMsg+=" 关于循环的低语挥之不去...那超越此世的道路，需要付出什么代价？"; return baseMsg; }
+
+        // --- Action Definitions (V6.2.4 - Ensure unique keys, fixed req/cost issues) ---
+        const techMap = { 'gene_therapy_basic': 'gene_opt_basic', 'neural_implant': 'neural_enhance_v1', 'research_upload_theory': 'upload_theory_v1', 'develop_advanced_ai': 'adv_ai_collab', 'access_quantum_net': 'quantum_access_basic', 'adv_regen_therapy': 'adv_regen', 'custom_immunity': 'custom_immune', 'ai_tutor': 'ai_tutor', 'skill_matrix_upload': 'skill_matrix', 'private_security': 'priv_sec', 'mil_tech_invest': 'mil_tech_invest', 'algo_trading': 'algo_trade', 'interstellar_trade': 'interstellar_trade', 'vertical_farming': 'vert_farm', 'synthetic_protein': 'synth_protein', 'deep_sea_mining': 'deep_sea', 'asteroid_mining': 'asteroid_mine', 'full_body_replacement': 'full_cyborg', 'cybernetic_upgrade': 'cyber_upgrade_basic' };
+        const actions = {
+             '学习基础技能': {label:(c)=>`学习基础 (${c})`, cost:300, statsChange:[0,-5,-300,8,0,0,0], req:()=>年龄<22&&智力<60, tt:"打下知识基础。", fn:function(){performAction(this,'学习基础技能');} },
+             '高等教育': {label:(c)=>`高等教育 (${c})`, cost:2000, statsChange:[0,-10,-2000,15,0,5,1], req:()=>年龄>=18&&年龄<30&&智力>55, tt:"系统性提升智力。", fn:function(){performAction(this,'高等教育');} },
+             '专项技能培训': {label:(c)=>`专项技能 (${c})`, cost:1200, statsChange:[-2,-8,-1200,5,0,3,0], req:()=>年龄>=18&&年龄<35&&!choiceHistory.includes('高等教育')&&智力<70, tt:"学习实用技能快速就业。", fn:function(){performAction(this,'专项技能培训');} },
+             '街头生存': {label:()=>'街头求生', cost:0, statsChange:[-5,-5,Math.random()*300,3,-2,2,0], req:()=>(背景==='street_urchin' || 背景==='nomad_tech_scav')&&年龄<25, tt:"利用街头/废土经验获取资源。", fn:function(){performAction(this,'街头生存');} },
+             '公司基础岗': {label:(c)=>`公司基础岗 (${c})`, cost:50, statsChange:[-3,-5,650+年龄*6+智力*1,3,3,5,0], req:()=>(智力>45||魅力>50)&&年龄>=18&&年龄<40, tt:"进入公司底层。", fn:function(){performAction(this,'corp_job');} },
+             '独立工作 (零工)': {label:()=>'承接零工', cost:0, statsChange:[-6,-6,400+年龄*4+智力*2.5,0,0,1,0], req:()=>true, tt:"承接短期工作。", fn:function(){performAction(this,'独立工作 (零工)');} },
+             '公司晋升': {label:(c)=>`争取晋升 (${c})`, cost:1500, statsChange:[-5,-10,-1500,5,10,15,2], req:()=> choiceHistory.includes('公司基础岗') && 年龄>23&&智力>60&&声望>25, tt:"在公司阶梯向上爬。", fn:function(){performAction(this,'corp_promotion');} },
+             '建立维系深度关系': {label:(c)=>`经营人脉 (${c})`, cost:() => Math.max(100, 300+Math.floor(魅力*3)+Math.floor(声望*1.5)), statsChange:[0,15,0,0,5,5,1], req:()=>true, tt:"投入情感与时间维系关系。", fn:function(){ let cost=this.cost(); if(神经币>=cost){ let changes=[0,15,-cost,0,5,5,1]; performAction(this, '建立维系深度关系', changes);} else { 显示通知(`经营人脉需 ${cost} NC 不足!`,'error'); }}}, // Simplified key, pass explicit changes
+             '组建家庭': {label:(c)=>`建立家庭 (${c})`, cost:6000, statsChange:[-5,20,-6000,0,0,10,5], req:()=>年龄>24&&年龄<45&&幸福度>60, tt:"人生大事，幸福与责任。", fn:function(){performAction(this,'组建家庭');} },
+             '处理家庭关系问题': {label:(c)=>`处理关系问题 (${c})`, cost:800, statsChange:[-5,(Math.random()>0.4?5:-10),-800,0,-5,-5,0], req:()=>年龄>25&&(choiceHistory.includes('建立家庭')||choiceHistory.some(a=>a.includes('经营人脉'))), tt:"处理家庭或重要关系矛盾。", fn:function(){performAction(this,'处理家庭关系问题');} }, // Simplified key
+             '基因优化疗程基础': {label:(c)=>`基础基因优化 (${c})`, cost:10000, statsChange:[10, 5, -10000, 0, 0, 0, 1], req:()=>年龄 > 20 && 神经币 >= 10000 && !acquiredTech.includes('gene_opt_basic'), tt:"提升基础健康和抵抗力，有风险。", fn:function(){performAction(this, 'gene_therapy_basic');}},
+             '高级再生治疗': {label:(c)=>`高级再生治疗 (${c})`, cost: 25000, statsChange:[()=>(Math.random() > 0.2 ? Math.min(40, 100-健康) : -10), 0, -25000, 0, 0, 2, 3], req:()=>年龄 > 35 && 神经币 >= 25000 && acquiredTech.includes('gene_opt_basic') && !acquiredTech.includes('adv_regen'), tt:"实验性疗法修复损伤、延缓衰老。", fn:function(){ performAction(this, 'adv_regen_therapy');}},
+             '定制病毒免疫': {label:(c)=>`定制病毒免疫 (${c})`, cost: 15000, statsChange:[5, 2, -15000, 2, 0, 0, 2], req: ()=> 年龄 > 25 && 智力 > 65 && 神经币 >= 15000 && !acquiredTech.includes('custom_immune'), tt:"设计广谱免疫力。", fn:function(){ performAction(this, 'custom_immunity');}},
+             '升级义体专项': {label:(c)=>`专项义体改造 (${c})`, cost:()=>4500+Math.floor(声望*15)+(acquiredTech.filter(t=>t.startsWith('cyber_')).length * 2500), statsChange:[()=>(Math.random()>0.25?12:-6),-9,0,0,5,5,2], req: ()=> 年龄>20, tt:"植入强化特定能力的义体。", fn:function(){ let cost = this.cost(); if(神经币>=cost){ let changes = this.statsChange.map(v => typeof v === 'function' ? v() : v); changes[2]=-cost; performAction(this,'cybernetic_upgrade', changes);} else {显示通知(`义体改造需 ${cost.toLocaleString()} NC 不足!`,'error');} }},
+             '神经修复手术': {label:(c)=>`神经修复手术 (${c})`, cost: 20000, statsChange:[5, ()=>(Math.random() > 0.4 ? 10 : -5), -20000, 5, 0, 0, 1], req: ()=> 年龄 > 40 && 健康 < 70 && 幸福度 < 50 && 神经币 >= 20000 && acquiredTech.includes('neural_enhance_v1'), tt:"修复神经损伤或精神创伤。", fn:function(){ performAction(this, 'neural_repair');}},
+             '神经增强植入实验性': {label:(c)=>`神经增强植入 (${c})`, cost:18000, statsChange:[-15, -10, -18000, 12, 0, 8, 4], req:()=>年龄 > 25 && 智力 > 70 && 神经币 >= 18000 && !acquiredTech.includes('neural_enhance_v1'), tt:"实验性植入大幅提升智力。", fn:function(){performAction(this, 'neural_implant');}},
+             '研究意识上传理论': {label:(c)=>`研究上传理论 (${c})`, cost: 3000, statsChange:[0, -5, -3000, 8, 0, 2, 5], req:()=> 智力 > 75 && 年龄 > 30 && !acquiredTech.includes('upload_theory_v1'), tt:"探索意识数字化理论。", fn:function(){ performAction(this, 'research_upload_theory');}},
+             '合作开发高级AI': {label:(c)=>`合作开发高级AI (${c})`, cost:12000, statsChange:[-5, 5, -12000, 10, 0, 10, 8], req:()=>智力>80 && (背景==='academic_prodigy' || choiceHistory.includes('高等教育')) && !acquiredTech.includes('adv_ai_collab'), tt:"参与前沿AI项目。", fn:function(){performAction(this,'develop_advanced_ai');}},
+             '接入量子计算网络': {label:(c)=>`接入量子计算 (${c})`, cost:5000, statsChange:[0, -2, -5000, 3, 0, 1, 2], req:()=>智力>85 && 神经币 >= 5000 && (acquiredTech.includes('adv_ai_collab') || 背景 === 'academic_prodigy'), tt:"租用量子算力解决复杂问题。", fn:function(){performAction(this, 'access_quantum_net');}},
+             'AI个性化教学': {label:(c)=>`AI个性化教学 (${c})`, cost: 4000, statsChange:[0, 2, -4000, 10, 0, 1, 1], req: ()=> 年龄 < 40 && 智力 < 80 && !acquiredTech.includes('ai_tutor'), tt:"购买高级AI教学系统。", fn:function(){ performAction(this, 'ai_tutor');}},
+             '技能矩阵直传': {label:(c)=>`技能矩阵直传 (${c})`, cost: 15000, statsChange:[-5, -8, -15000, 15, 0, -2, 2], req: ()=> 年龄 > 18 && 神经币 >= 15000 && acquiredTech.includes('neural_enhance_v1') && !acquiredTech.includes('skill_matrix'), tt:"通过神经接口灌输技能数据包。", fn:function(){ performAction(this, 'skill_matrix_upload');}},
+             '投资近地轨道建设': {label:(c)=>`投资轨道建设 (${c})`, cost:20000, statsChange:[0, -5, -20000, 0, 5, 10, 8], req:()=>年龄 > 30 && 神经币 >= 20000 && (声望 > 30 || 智力 > 70), tt:"投资空间站/工厂项目。", fn:function(){performAction(this, 'invest_orbital');}},
+             '申请火星殖民抽签': {label:(c)=>`申请火星抽签 (${c})`, cost:5000, statsChange:[0, 5, -5000, 0, 0, 1, 1], req:()=>年龄 >= 20 && 年龄 < 55 && 神经币 >= 5000, tt:"参与火星殖民地名额抽签。", fn:function(){performAction(this, 'mars_lottery');}},
+             '深海资源开采': {label:(c)=>`投资深海开采 (${c})`, cost: 22000, statsChange:[-3, -5, -22000, 3, 0, 8, 5], req: ()=> 年龄 > 30 && 神经币 >= 22000 /* && acquiredTech.includes('adv_robotics') */, tt:"投资深海矿物/能源开采。(需高级机器人技术)", fn:function(){performAction(this, 'deep_sea_mining');}}, // Temporarily comment out tech req if 'adv_robotics' isn't acquirable yet
+             '小行星采矿投资': {label:(c)=>`投资小行星采矿 (${c})`, cost: 50000, statsChange:[-5, -8, -50000, 5, 0, 15, 12], req: ()=> 年龄 > 40 && 神经币 >= 50000 /* && acquiredTech.includes('orbital_logistics') */, tt:"高风险投资，获取地外资源。(需轨道物流技术)", fn:function(){ performAction(this, 'asteroid_mining');}}, // Temporarily comment out tech req
+             '创作神经交互艺术': {label:(c)=>`创作交互艺术 (${c})`, cost:1500, statsChange:[-2, 18, -1500, 2, 8, 5, 3], req:()=> (魅力 > 65 || 智力 > 70) && 年龄 > 22, tt:"创作与观众意识互动的艺术。", fn:function(){performAction(this, 'create_neuro_art');}},
+             '参与DAO治理实验': {label:(c)=>`参与DAO治理 (${c})`, cost:1000, statsChange:[-1, 2, -1000, 1, 2, 8, 2], req:()=> (声望 > 20 || 智力 > 65 || acquiredTech.includes('adv_ai_collab')) && 年龄 > 24, tt:"参与去中心化组织的运营决策。", fn:function(){performAction(this, 'participate_dao');}},
+             '算法高频交易': {label:(c)=>`算法高频交易 (${c})`, cost: 10000, statsChange:[0, -5, -10000, 5, 0, 3, 1], req: ()=> 智力 > 80 && 神经币 >= 10000 && acquiredTech.includes('quantum_access_basic') && !acquiredTech.includes('algo_trade'), tt:"利用量子算力进行超高速金融交易。", fn:function(){ performAction(this, 'algo_trading');}},
+             '建立跨星际贸易链接': {label:(c)=>`建跨星际贸易 (${c})`, cost: 100000, statsChange:[-10, 10, -100000, 5, 10, 30, 25], req: ()=> 年龄 > 50 && 声望 > 60 && 神经币 >= 100000 /* && acquiredTech.includes('interstellar_logistics') */, tt:"建立与其他星系殖民地的贸易渠道。(需星际物流)", fn:function(){ performAction(this, 'interstellar_trade');}}, // Temporarily comment out tech req
+             '私人安保升级': {label:(c)=>`私人安保升级 (${c})`, cost: 8000, statsChange:[2, -2, -8000, 0, 0, 5, 1], req: ()=> 神经币 >= 8000 && (声望 > 40 || 背景 === 'corp_kid' || 年龄 > 35), tt:"升级先进的私人安保。", fn:function(){ performAction(this, 'private_security');}},
+             '投资军工复合体': {label:(c)=>`投资军工复合体 (${c})`, cost: 30000, statsChange:[-5, -10, -30000, 0, 0, 12, 10], req: ()=> 神经币 >= 30000 && 声望 > 50 && 年龄 > 35, tt:"投资于先进武器和防御技术公司。", fn:function(){ performAction(this, 'mil_tech_invest');}},
+             '垂直农场投资': {label:(c)=>`投资垂直农场 (${c})`, cost: 12000, statsChange:[0, 3, -12000, 2, 0, 5, 3], req:()=> 神经币 >= 12000 && 年龄 > 25, tt:"投资于高效的城市室内农业。", fn:function(){ performAction(this, 'vertical_farming');}},
+             '合成蛋白技术': {label:(c)=>`研发合成蛋白 (${c})`, cost: 16000, statsChange:[-2, 0, -16000, 8, 0, 6, 4], req:()=> 智力 > 70 && 神经币 >= 16000 && !acquiredTech.includes('synth_protein'), tt:"研究和开发人工合成食物技术。", fn:function(){ performAction(this, 'synthetic_protein');}},
+             '破译高阶加密': {label:(c)=>`破译高阶加密 (${c})`, cost:3500, statsChange:[0,-10,-3500,0,0,0,0], req:()=>智力>=61&&年龄>22&&isPrime(智力), tt:"挑战尖端加密。智力需为质数。", fn:function(){performAction(this,'prime_decryption');}},
+             '高风险尖端投资': {label:(c)=>`高风险投资 (${c})`, cost:18000, statsChange:[-2,-8,-18000,5,0,15,12], req:()=>神经币>=18000&&智力>75&&年龄>30, tt:"投资极其前沿项目。", fn:function(){performAction(this,'risk_investment');}},
+             '指导后辈传承知识': {label:(c)=>`传承知识 (${c})`, cost:300, statsChange:[0,12,-300,0,5,10,10], req:()=>年龄>50&&(声望>50||智力>75||传承>30), tt:"分享经验智慧。", fn:function(){performAction(this,'指导后辈传承知识');} }, // Use unique key
+             '撰写发布回忆录': {label:(c)=>`发布回忆录 (${c})`, cost:1500, statsChange:[0,8,-1500,0,0,8,18], req:()=>年龄>55&&传承>25, tt:"著述发布思想经历。", fn:function(){performAction(this,'撰写发布回忆录');} },
+             '高级健康维续': {label:(c)=>`高级健康维续 (${c})`, cost:()=>Math.max(3000, 4000+Math.floor((年龄-40)*80)*(1-(健康/500))), statsChange:[()=>(acquiredTech.includes('adv_regen')?15:12), 5, 0, 0, 0, 0, 0], req:()=>年龄 > 45, tt:"投入巨资对抗衰老。", fn:function(){ let cost = this.cost(); if(神经币>=cost){ let changes = this.statsChange.map(v => typeof v === 'function' ? v() : v); changes[2] = -cost; performAction(this, '高级健康维续', changes);} else {显示通知(`健康维续需 ${cost.toLocaleString()} NC 不足!`,'error');} }},
+             '维护数字永生项目': {label:(c)=>`数字永生维护 (${c})`, cost:()=>2500+Math.floor(传承*150*(智力/80)), statsChange:[0, 5, 0, 5, 0, 0, 12], req:()=>年龄>60&&传承>40&&acquiredTech.includes('upload_theory_v1'), tt:"维护数字思想副本。", fn:function(){ let cost = this.cost(); if(神经币>=cost){ let changes=[...this.statsChange]; changes[2]=-cost; performAction(this, '维护数字永生项目', changes);} else {显示通知(`维护数字遗产需 ${cost.toLocaleString()} NC 不足!`,'error');} }},
+             '安享晚年退休': {label:()=>'安享晚年', cost:1000, statsChange:[0,15,-1000,0,0,-10,5], req:()=>年龄>65, tt:"逐步退出社会竞争，享受宁静。", fn:function(){performAction(this,'retire');} }, // Use unique key 'retire'
+             '紧急冷冻睡眠': {label:(c)=>`紧急冷冻 (${c})`, cost:15000, statsChange:[0,0,-15000,0,0,-20,-10], req:()=>健康 <= 15 && 神经币 >= 15000, tt:"健康危急！进入长期冷冻...", fn:function(){performAction(this, 'cryo_sleep');}},
+             '全身义体替换': {label:(c)=>`全身义体替换 (${c})`, cost:100000, statsChange:[90, -40, -100000, -10, -15, -30, -20], req:()=>健康 <= 15 && 神经币 >= 100000 && (acquiredTech.includes('cyber_upgrade_basic') || 背景==='bio_modded_youth'), tt:"健康危急！替换全合成躯体...", fn:function(){performAction(this, 'full_body_replacement');}},
+             '勘破存在代码': {label:(c)=>`勘破存在代码 (${c})`, cost:()=> Math.max(20000, Math.floor(神经币*0.25 + 传承*200 + 智力*100 + (100-幸福度)*100 + (100-健康)*150)), statsChange:[-10,-10,0,0,0,0,0], req:()=>hasCycleClue&&智力>92&&传承>55&&年龄>60, tt:"尝试理解世界底层代码，寻求超越。", fn:function(){ let cost = this.cost(); let changes = [...this.statsChange]; changes[2] = -cost; performAction(this,'cycle_cracking', changes);}}, // Pass correct cost
+             '预言未来': {label:(c)=>`读取时序数据 (${c})`, cost:350, statsChange:[0,-5,-350,0,0,0,0], req:()=>true, tt:"消耗算力解读数据流。", fn:function(){if(神经币>=this.cost){ 更新状态(0, -5, -350); /* Apply cost immediately */ simulatePredictionWorker(玄学模式);choiceHistory.push("预言未来");}else{显示通知("神经币不足!","error");}} }, // Apply cost before worker
+             '启用玄学': {label:()=>玄学模式?'遵循因果':'拥抱混沌', cost:0, statsChange:[0,0,0,0,0,0,0], req:()=>true, tt:"切换世界逻辑：因果或随机？", fn:function(){玄学模式=!玄学模式;显示通知(玄学模式?"混沌已激活...":"因果链条稳固...","info");choiceHistory.push(玄学模式?"启用玄学":"关闭玄学");下一回合();}}, // No performAction needed
+             'last_chance_lottery': { label:()=>'孤注一掷 (彩票)', cost: 100, statsChange:[0,-5,-100,0,0,0,0], req:()=> false, tt:"购买最后一张希望彩票。", fn:function(){performAction(this, 'last_chance_lottery');}},
+             'last_chance_accept': { label:()=>'接受终局', cost: 0, statsChange:[0,0,0,0,0,0,0], req:()=> false, tt:"平静地迎接不可避免的结局。", fn:function(){performAction(this, 'last_chance_accept');}},
+             'last_chance_struggle': { label:()=>'绝境求生', cost: 0, statsChange:[-5,-10,0,0,0,0,0], req:()=> false, tt:"榨干最后一点潜能，尝试扭转命运。", fn:function(){performAction(this, 'last_chance_struggle');}}
+        };
+
+        // --- Simulate Prediction Worker (Stable) ---
+        function simulatePredictionWorker(isXuanxue) { console.log("接入时序数据库..."); messageBox.textContent = "分析未来数据流..."; 清除按钮(); setTimeout(() => { let accuracyFactor = (智力/150)+(声望/300)+0.3; if(isPrime(智力)){accuracyFactor+=0.05; console.log("质数智力-分析增强.");} const trendChance=0.6; let predictionText=""; let pNC=0,pR=0,pHP=0,pHa=0; let pCD={}; let coreOutcomeRoll=Math.random(); if(isXuanxue)coreOutcomeRoll+=(Math.random()-0.5)*0.4; if(Math.random()<trendChance){ const finalRoll=coreOutcomeRoll*accuracyFactor; if(finalRoll>0.7){predictionText="趋势洞察:经济上行可能性高..."; pNC=Math.floor(Math.random()*1500+500); pR=Math.floor(Math.random()*8+2);} else if(finalRoll>0.4){predictionText="趋势观察:社会情绪可能保持平稳..."; pHa=Math.random()>0.7?5:-2;} else{predictionText="趋势警告:潜在不稳定因素增多..."; pNC=-Math.floor(Math.random()*800+200); pR=-Math.floor(Math.random()*5+1); pHP=-5;} }else{ const finalRoll=coreOutcomeRoll*accuracyFactor; if(finalRoll>0.75){predictionText=`机遇窗口:可能出现意外的财富来源...`; pNC=2000; pR=10; pHa=5;} else if(finalRoll>0.35){predictionText=`短期预测:数据流波动在正常范围内...`;} else{predictionText=`风险预警:警惕潜在的经济或社会损失...`; pNC=-1000; pR=-5; pHP=-3; pHa=-5;} } if(isXuanxue)predictionText+=isPrime(智力)?" (混沌中的异常清晰)":" (混沌的低语干扰)"; else if(isPrime(智力))predictionText+="(结构洞察)"; 未来预言.结果={神经币:pNC,声望:pR,健康:pHP,幸福度:pHa,信息:predictionText}; pCD={健康:Math.max(0,Math.min(100,健康+pHP)),幸福度:Math.max(0,Math.min(100,幸福度+pHa)),智力:智力,魅力:魅力,声望:Math.max(0,声望+pR),传承:传承}; 显示通知("时序数据解析: "+predictionText.substring(0, 50)+"...",(pNC+pR+pHa*10)>=0?"info":"warning"); if(Object.keys(pCD).length>0)generatePredictionChart(pCD); 未来预言.剩余回合 = 3; console.log("解析完成。"); 下一回合(); }, 700+Math.random()*600); }
+
+        // --- Chart Generation (Stable) ---
+        function generatePredictionChart(data) { if(!predictionChartContainer)return;if(predictionChartInstance){predictionChartInstance.destroy();predictionChartInstance=null;} predictionChartContainer.innerHTML='';const cE=document.createElement('canvas');cE.id='predictionChart'; predictionChartContainer.appendChild(cE);predictionChartContainer.classList.add('has-chart');const ctx=cE.getContext('2d');if(!ctx){return;} predictionChartInstance=new Chart(ctx,{type:'radar',data:{labels:['健康','幸福度','智力','魅力','声望','传承'],datasets:[{label:'未来状态预测',data:[data.健康,data.幸福度,data.智力,data.魅力,data.声望,data.传承],fill:true,backgroundColor:'rgba(157,32,224,0.3)',borderColor:'rgba(157,32,224,1)',pointBackgroundColor:'rgba(157,32,224,1)',pointBorderColor:'#fff',pointHoverBackgroundColor:'#fff',pointHoverBorderColor:'rgba(157,32,224,1)'}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{angleLines:{display:true,color:'rgba(255,255,255,0.2)'},suggestedMin:0,suggestedMax:100,grid:{color:'rgba(255,255,255,0.2)'},pointLabels:{font:{size:11},color:'var(--text-light)'},ticks:{backdropColor:'rgba(0,0,0,0.6)',color:'var(--text-light)',stepSize:20}}},plugins:{legend:{position:'top',labels:{color:'var(--text-light)'}}}}}); }
+
+        // --- Central Action Handling (V6.2.4 - More Robust) ---
+        function performAction(actionDetails, actionKey = null, explicitChanges = null) { // Accept explicit changes array
+             if (!actionDetails || !游戏开始) return;
+             if (!actionKey) { for (const key in actions) { if (actions[key] === actionDetails) { actionKey = key; break; } } }
+             if (!actionKey) { console.error("!! performAction: Could not find key for:", actionDetails.label(0)); return; } // Log label if key fails
+             // console.log(`--- Performing Action: ${actionKey} ---`); // Optional Debug Log
+
+             let changesToApply;
+
+             if (explicitChanges) {
+                 // Use changes passed directly (e.g., from button handlers that calc cost/stats)
+                 changesToApply = [...explicitChanges]; // Ensure it's a copy
+                 // Make sure cost is included if it was dynamic and passed in changes[2]
+             } else {
+                // Fallback: calculate statsChange now if not passed (less preferred)
+                changesToApply = [];
+                 try {
+                     if (typeof actionDetails.statsChange === 'function') { changesToApply = actionDetails.statsChange().map(v => (typeof v === 'function' ? v() : v)); }
+                     else { changesToApply = [...(actionDetails.statsChange || [0,0,0,0,0,0,0])].map(v => (typeof v === 'function' ? v() : v)); }
+                     while(changesToApply.length < 7) changesToApply.push(0);
+
+                     // Apply cost calculated during button generation (stored in actionDetails.costValue)
+                     const cost = actionDetails.costValue || 0;
+                     if (cost > 0) { changesToApply[2] = (changesToApply[2] || 0) - cost; }
+
+                 } catch(e) {
+                     console.error(`StatsChange Calculation Error (${actionKey}):`, e); changesToApply=[0,0,-actionDetails.costValue || 0,0,0,0,0]; // Apply cost even on error
+                 }
+             }
+             // Apply Xuanxue here *after* base changes & cost are set
+             if (玄学模式 && actionKey !== '启用玄学') {
+                for(let i=0;i<changesToApply.length;i++){ if(Math.random()<0.18 && i!==2){ changesToApply[i] += Math.floor(Math.random()*9)-4;}}
+             }
+
+
+             // Apply Final Stat Changes
+             if (changesToApply && changesToApply.some(c => c !== 0)) { 更新状态(...changesToApply); if(!游戏开始) return; }
+
+             // Tech acquisition using actionKey
+             const techId = techMap[actionKey];
+             if (techId && !acquiredTech.includes(techId)) { acquiredTech.push(techId); console.log("Acquired Tech:", techId); 更新状态(); }
+             else if (actionKey === '升级义体专项' && !acquiredTech.includes('cyber_upgrade_basic')) { acquiredTech.push('cyber_upgrade_basic'); 更新状态(); } // Use correct key
+
+            // --- Specific Action Outcomes ---
+            if (actionKey === 'gene_therapy_basic'){ const sR=Math.random()+(智力/500)-(健康/500); if(sR>0.3){显示通知("基础基因优化成功！感觉机能提升。", "success");} else { const pT=Math.random(); if (pT<0.5){显示通知("基因疗程排异反应！健康受损！","error");更新状态(-15,-5,0,0,0,-2,0);} else {显示通知("优化出错，轻微神经紊乱...幸福度下降。","warning");更新状态(-5,-12,0,-1,0,-1,0);} } }
+            else if (actionKey === 'adv_regen_therapy') { const sR=Math.random()+(健康/400)-(年龄/500); if(sR>0.4){显示通知("高级再生治疗效果显著，部分机能恢复！","success");}else{显示通知("再生疗法效果不佳，甚至引发并发症...","warning");更新状态(-10,-5,0,0,0,-1,-1);} }
+            else if (actionKey === 'custom_immunity') { 显示通知("定制病毒免疫系统已激活。", "success"); }
+            else if (actionKey === 'cybernetic_upgrade' || actionKey === '升级义体专项') { if(Math.random()<0.15){显示通知("新义体兼容性问题，额外花费修复。","warning");更新状态(0,-3,-Math.min(神经币*0.05, 500),0,0,0,0);}else{显示通知("专项义体改造完成。","info");} }
+            else if (actionKey === 'neural_repair') { const rR=Math.random()+(健康/500)+(智力/500); if(rR>0.5){显示通知("神经修复手术成功，思维和情绪改善。","success");}else{显示通知("神经修复失败，精神状态恶化...","error");更新状态(-5,-15,0,-3,0,-2,-1);} }
+            else if (actionKey === 'neural_implant' || actionKey === '神经增强植入实验性') { const sR=Math.random()+(幸福度/300)+(健康/300)-(智力/500); if(sR<0.25){显示通知("神经植入体排斥反应剧烈！精神临近崩溃！","error");更新状态(-20,-35,0,-5,0,-10,-3); if(Math.random()<0.3)acquiredTech=acquiredTech.filter(t=>t !== 'neural_enhance_v1');} else if(sR<0.5){显示通知("植入体带来持续性头痛和情绪波动...","warning");更新状态(-5,-10,0,0,0,0,0);} else {显示通知("实验性神经植入成功！思维速度显著提升！","success");} }
+            else if (actionKey === 'research_upload_theory') { if(智力>90&&Math.random()<0.2){显示通知("意识上传理论研究取得突破！","success");更新状态(0,5,0,3,0,2,5);}else{显示通知("理论研究继续推进中...","info");} }
+            else if (actionKey === 'develop_advanced_ai') { const roll=Math.random(); if(roll<(玄学模式?0.2:0.1)){ const contain=Math.random()+(智力/400)>0.5; if(contain){显示通知("合作AI产生意外行为，及时控制但消耗额外资源。","warning");更新状态(0,-5,-3000,0,0,-5,-1);} else {显示通知("AI行为失控！造成严重破坏！声望和资产受损！","error");更新状态(-10,-15,-10000,-5,0,-20,-5); if(Math.random()<0.5)acquiredTech=acquiredTech.filter(t=>t !== 'adv_ai_collab');}} else {显示通知("与高级AI合作项目进展顺利。","info");} }
+            else if (actionKey === 'access_quantum_net') { const iR=Math.random(); const iC=0.2+(智力/600)+(acquiredTech.includes('quantum_access_basic')?0.1:0); if(!acquiredTech.includes('quantum_access_basic')){acquiredTech.push('quantum_access_basic');更新状态();} if(iR<iC){const bonusType=Math.random(); if(bonusType<0.6){显示通知("量子模拟获得关键数据洞见！智力提升！","success");更新状态(0,5,0,2+Math.floor(智力/30),0,1,1);}else{const ncGain=Math.floor(Math.random()*3000+1000); 显示通知("量子网络发现未声明算力漏洞，获意外NC！","success");更新状态(0,0,ncGain,1,0,0,0);}}else{显示通知("量子网络接入完成，算力消耗完毕。","info");} }
+            else if (actionKey === 'ai_tutor') { 显示通知("AI个性化教学系统部署完成。", "success"); }
+            else if (actionKey === 'skill_matrix_upload') { const sR=Math.random()+(幸福度/500); if(sR>0.3){显示通知("技能矩阵灌输成功！掌握了新知识，但感觉...不自然。","success");}else{显示通知("矩阵灌输错误！知识混乱，精神受损！","error");更新状态(-5,-15,0,-5,0,-3,-2); acquiredTech=acquiredTech.filter(t=>t !== 'skill_matrix');} }
+            else if (actionKey === 'invest_orbital') { if(Math.random()<0.05){ const gain=Math.floor(Math.random()*5000+1000); 显示通知("轨道建设初步报告利好！获早期回报！","info");更新状态(0,2,gain,0,1,3,1);} else {显示通知("轨道建设投资已注入，等待长期回报。","info");} }
+            else if (actionKey === 'mars_lottery') { const winRoll=Math.random(); const winChance=0.001+(声望/20000)-(年龄/1000); if(winRoll<winChance){显示游戏结束(`奇迹发生！你抽中了火星殖民地名额！支付巨额费用后，你踏上了前往红色星球的单程旅途...未来未知！`,true); return;} else {显示通知("火星殖民抽签完成，遗憾未能中签。","info");} }
+            else if (actionKey === 'deep_sea_mining' || actionKey === 'asteroid_mining') { 显示通知("对地外/深海资源的长期投资已启动。", "info"); }
+            else if (actionKey === 'create_neuro_art') { const sR = Math.random()+(魅力/300)+(智力/400); let msg="神经交互艺术作品完成。"; let ncG=0,rG=0,haG=0; if(sR>0.9){ncG=Math.floor(Math.random()*5000+3000); rG=10+Math.floor(魅力/10); haG=10; msg+=" 作品大获成功！"; 显示通知(msg,"success");} else if(sR>0.5){ncG=Math.floor(Math.random()*2000+500); rG=3+Math.floor(魅力/20); haG=5; msg+=" 获得了一定关注。"; 显示通知(msg,"info");} else {ncG=-Math.floor(Math.random()*500); rG=-2; haG=-3; msg+=" 反响平平。"; 显示通知(msg,"warning");} 更新状态(0,haG,ncG,0,0,rG,0); }
+            else if (actionKey === 'participate_dao') { const roll=Math.random(); if(roll>0.6){ const gain=Math.floor(Math.random()*800+200); 显示通知("参与治理的DAO运作良好，获得分红。","success");更新状态(0,3,gain,0,1,2,1); } else if(roll<0.2){ const loss=Math.floor(Math.random()*500+100); 显示通知("DAO决策失误或遭攻击，投入受损。","error");更新状态(-1,-5,-loss,0,0,-3,-1);} else {显示通知("DAO治理实验进行中...","info");} }
+            else if (actionKey === 'algo_trading') { const tR=Math.random()+(智力/300)-(玄学模式?0.15:0.05); if(tR>0.8){const gain=Math.floor(Math.random()*30000+10000); 显示通知("算法交易精准捕捉市场波动，获利丰厚！","success");更新状态(0,5,gain,2,0,5,3);} else if(tR>0.4){const gainLoss=Math.floor(Math.random()*10000-5000); 显示通知(`高频交易市场波动剧烈，盈亏 ${gainLoss>0?'+':''}${gainLoss.toLocaleString()} NC`, gainLoss>=0?"info":"warning");更新状态(0,-2,gainLoss,1,0,1,0);}else{const loss=Math.floor(Math.random()*15000+5000); 显示通知("算法交易遭遇黑天鹅事件，损失惨重！","error");更新状态(0,-10,-loss,-1,0,-5,-2);} }
+            else if (actionKey === 'interstellar_trade' || actionKey === 'private_security' || actionKey === 'mil_tech_invest' || actionKey === 'vertical_farming' || actionKey === 'synthetic_protein') { 显示通知("相关投资/升级已完成。", "info"); }
+            else if (actionKey === 'prime_decryption') { const bSC=0.1+Math.max(0,(智力-60))/40; const fSC=Math.min(0.95,bSC)*(玄学模式?0.85:1.0); const roll=Math.random(); let currentCost=actionDetails.costValue || 3500; if(roll<fSC){ const gainNC=Math.floor((Math.random()*10000+5000)*(智力/50)); const gI=Math.floor(Math.random()*5+2); const gR=Math.floor(Math.random()*15+5); 显示通知(`质数分解成功！获 ${gainNC.toLocaleString()} NC，智识提升！`, "success"); 更新状态(0,5,gainNC,gI,0,gR,3); if(!hasCycleClue&&Math.random()<0.15){显示通知("破译的数据片段中似乎隐藏着...关于世界本质的奇异暗示？","info");hasCycleClue=true;console.log("Cycle Clue acquired via Prime Decryption!");}}else{ const lossNC=Math.floor(Math.random()*4000+currentCost); const lR=-Math.floor(Math.random()*20+10); const pI=Math.random()<0.3?-Math.floor(Math.random()*4+1):0; 显示通知(`破译失败！损失 ${lossNC.toLocaleString()} NC，声望暴跌！${pI<0?'思维受冲击！':''}`, "error"); 更新状态(-5,-15,-lossNC,pI,0,lR,-1); } }
+            else if (actionKey === 'risk_investment' || actionKey === '高风险尖端投资') { let currentCost=actionDetails.costValue || 18000; const sR=Math.random()+(智力/200)-(玄学模式?0.1:0); if(sR>0.85){const gain=Math.floor(currentCost*(Math.random()*3+2)); 显示通知(`投资大获成功！回报 ${gain.toLocaleString()} NC！`, "success"); 更新状态(0,10,gain,5,0,20,10);}else if(sR>0.5){const gain=Math.floor(currentCost*(Math.random()*0.6+0.8)); 显示通知(`投资进展顺利，回报 ${gain.toLocaleString()} NC。`, "info"); 更新状态(0,0,gain,0,0,5,2);}else{const lP=Math.random()*0.5+0.3; 显示通知(`投资失败！损失 ${Math.round(currentCost*lP).toLocaleString()} NC。`, "error"); 更新状态(-2,-5,-Math.round(currentCost*lP),0,0,-10,-3);} }
+            else if (actionKey === 'cycle_cracking') { const sF=(智力/150)+(传承/100)+(幸福度/200)+(健康/300)-(玄学模式?0.15:0.0); const roll=Math.random()*1.3; console.log(`Cycle Crack Roll: ${roll.toFixed(2)} vs Factor: ${sF.toFixed(2)}`); if(roll<sF){显示游戏结束("意识上传成功！顿悟！你理解了代码本质，观测到了循环之外。你的存在融入了更高维度...",true); return;}else{显示通知("强行理解世界代码失败！信息洪流冲击意识核心！","error");const hP=-Math.min(健康,Math.floor(Math.random()*25+15)); const haP=-Math.min(幸福度,Math.floor(Math.random()*40+20)); const iP=-Math.min(智力,Math.floor(Math.random()*20+10)); const lP=-Math.min(传承,Math.floor(Math.random()*15+5)); 更新状态(hP,haP,0,iP,-10,-20,lP); messageBox.textContent+=" ...尝试失败，代价惨重。这次失败，是否也是循环的一部分？"; }}
+            else if (actionKey === 'cryo_sleep') { 显示游戏结束(`在${年龄}岁，面对无法挽回的健康状况，你选择了紧急冷冻。意识沉入无尽的冰封，等待一个渺茫的未来...`, true); return; }
+            else if (actionKey === 'full_body_replacement') { 显示通知("全身义体替换完成！你获得了全新的机械身躯，但感觉...有些不同了。", "success"); acquiredTech.push('full_cyborg'); 更新状态(); }
+            else if (actionKey === 'last_chance_lottery') { const bWC=0.05; const lB=Math.max(0,传承-50)/500; const xF=玄学模式?(Math.random()*0.6+0.7):1.0; const fWC=Math.min(0.2,bWC+lB)*xF; if(Math.random()<fWC){const winnings=Math.floor(Math.random()*80000+20000); 显示通知(`奇迹！彩票中了大奖！获得 ${winnings.toLocaleString()} NC！`, "success"); 更新状态(5,20,winnings,0,0,10,5); /* Next turn called below */ } else { 显示游戏结束("最后的希望破灭了，彩票未能改变命运...", false); return;} }
+            else if (actionKey === 'last_chance_accept') { 显示游戏结束("在绝望的边缘，你选择平静地接受了终局...", false); return; }
+            else if (actionKey === 'last_chance_struggle') { const sR=Math.random(); if(sR<0.25){ const yG=Math.floor(Math.random()*5)+1; 年龄-=yG; 显示通知(`你用意志榨干了最后的潜能，奇迹般地争取到了 ${yG} 年时间！`,"success"); 更新状态(10,5,0,0,0,0,1); /* Next turn called below */ }else{显示游戏结束("最后的挣扎耗尽了你仅存的生命力...",false); return;} }
+            else if (actionKey === 'retire') { 显示游戏结束(`在${年龄}岁，你选择放下奔波，安享晚年。`, false, true); return; }
+            else if (actionKey === 'corp_job' || actionKey === 'corp_promotion') { if(Math.random()<0.08){ if(Math.random()>0.5){显示通知("工作中表现出色，获得小额奖金。","success");更新状态(0,5,500+智力*10,1,0,2,0);}else{显示通知("与同事/上级发生冲突，心情受影响。","warning");更新状态(0,-8,0,0,-2,-1,0);}} }
+
+
+             // --- Standard Turn Progression ---
+             if (游戏开始) {
+                 let agesThisTurn=1; const predictionActive=actionKey==='预言未来'; const metaToggle=actionKey==='启用玄学';
+                 if(!predictionActive && !metaToggle){ 年龄+=agesThisTurn; let aHDecay=(年龄>45)?-Math.floor(Math.max(0,(年龄-45)/14)):0; let aHaDecay=(年龄>55)?-Math.floor(Math.max(0,(年龄-55)/20)):0; if(幸福度>85)aHaDecay=Math.min(0,aHaDecay+1); if(健康>85&&年龄>65)aHDecay=Math.min(0,aHDecay+1); if(acquiredTech.includes('gene_opt_basic'))aHDecay=Math.min(0,aHDecay+1); if(acquiredTech.includes('adv_regen'))aHDecay=Math.min(0,aHDecay+1); if(aHDecay!==0||aHaDecay!==0){更新状态(aHDecay,aHaDecay); if(!游戏开始)return;} else {if(stats.年龄)stats.年龄.textContent=年龄;} 当前回合++; }
+                 const labelForHistory=actionDetails.label?actionDetails.label(actionDetails.costValue||0).split('(')[0].trim():'未知操作'; choiceHistory.push(labelForHistory);
+                 if(未来预言.剩余回合>0){ 未来预言.剩余回合--; if(未来预言.剩余回合===0&&未来预言.结果){ console.log("Applying prediction:", 未来预言.结果); 显示通知(`先前预测(${未来预言.结果.信息.substring(0,12)}...)影响显现。`,"info"); 更新状态(未来预言.结果.健康||0, 未来预言.结果.幸福度||0, 未来预言.结果.神经币||0, 0,0, 未来预言.结果.声望||0, 0); 未来预言.结果=null; if(predictionChartInstance){predictionChartInstance.destroy();predictionChartInstance=null;} predictionChartContainer.innerHTML='预言数据流已消散...'; predictionChartContainer.classList.remove('has-chart'); if(!游戏开始) return; } }
+                 if(!predictionActive) { handleRandomEventsAndChallenges(); if(!游戏开始) return; }
+                 // Determine if next turn should proceed
+                 let shouldProceed = 游戏开始 && !predictionActive;
+                 // Don't proceed if a last chance action *failed* and ended the game
+                 if (actionKey === 'last_chance_lottery' && !信息.includes("中了大奖")) shouldProceed = false;
+                 if (actionKey === 'last_chance_struggle' && !信息.includes("争取到了")) shouldProceed = false;
+                 // If last chance succeeded, call 下一回合 immediately
+                 if (游戏开始 && (actionKey === 'last_chance_lottery' || actionKey === 'last_chance_struggle') && shouldProceed) { 下一回合(); }
+                 // Normal progression after a short delay
+                 else if (shouldProceed) { setTimeout(下一回合, 180); }
+             }
+        }
+
+
+        // --- Random Events & Challenges (Stable) ---
+        function handleRandomEventsAndChallenges() { if (!游戏开始) return; let chalMul = 玄学模式?1.7:1.0; let miraMul = 玄学模式?1.5:1.0; const bCC=0.20+(年龄/650); const bMC=0.05; let notifMsg=null; if (isPrime(年龄)) { chalMul*=1.9; miraMul*=1.8; notifMsg=`${年龄}岁 - 质数共振? 事件概率波动...`; } if(notifMsg&&Math.random()<0.6){显示通知(notifMsg,"info");} if(Math.random()<bCC*chalMul)triggerChallenge(); if(游戏开始&&Math.random()<bMC*miraMul)triggerMiracleOrEasterEgg(); }
+        function triggerChallenge() { if(!游戏开始)return; const challenges = [ {type:'基础', penalty:[-15,-5,-Math.min(神经币, 300+年龄*12),0,-2,0,0], msg:"遭遇恶劣天气或交通系统瘫痪...", req:()=> true}, {type:'基础', penalty:[0,-15,-Math.min(神经币*0.1, 1500),-5,0,-8,0], msg:"卷入复杂的网络钓鱼或身份盗用...", req:()=> 智力 < 75 || 年龄 > 30}, {type:'关系', penalty:[0,-25,-500,0,-10,-15,-1], msg:"社交圈内出现严重的信任危机或背叛...", req:()=> choiceHistory.includes('经营人脉') || 声望 > 30}, {type:'关系', penalty:[0,-15,0,-5,-10,-20,-2], msg:"虚假信息或恶意攻击损害了你的公众声望！", req:()=> 声望 > 50}, {type:'科技', penalty:[-10,-5,-Math.min(神经币*0.2, 2000+智力*15),-5,0,-15,-2], msg:"你的个人系统/网络防御被不明实体突破！", req:()=> 智力 > 50 || choiceHistory.includes('破译高阶加密') }, {type:'科技', penalty:[-20,-10,-800,-8,0,0,-1], msg:"常用的生物/神经接口出现排异或故障。", req:()=> acquiredTech.some(t => t.includes('gene_opt') || t.includes('neural_enhance') || t.includes('cyber_')) || 年龄 > 35}, {type:'科技', penalty:[-5,-10,-2500,-5,0,-8,-3], msg:"合作的AI助手产生逻辑偏差，需要昂贵的纠正。", req: ()=> acquiredTech.includes('adv_ai_collab')}, {type:'科技', penalty:[0,-5,-1000,0,0,0,0], msg:"你依赖的数字服务或平台意外关闭或收费剧增。", req:()=>年龄 > 25}, {type:'健康', penalty:[-25,-10,-Math.min(神经币, 3000), 0, 0, -5, -2], msg:"感染了罕见的高科技病毒或纳米污染！", req:()=> 健康 < 80 && !acquiredTech.includes('custom_immune')}, {type:'社会', penalty:[-25,-15,-Math.min(神经币, 1500),0,-5,-20,-4], msg:"新型社会工程攻击或模因病毒爆发！影响心理。", req:()=> 魅力 < 60 || 幸福度 < 50}, {type:'社会', penalty:[-5,-10,-Math.min(神经币*0.08, 1000),0,-5,-10,-2], msg:"市场动荡或关键资源价格飙升...", req:()=> true }, {type:'社会', penalty:[0,-5,0,0,0,-10,-5], msg:"社会信用评分系统调整，对你不利。", req:()=> 声望 < 0 || 年龄 > 40}, {type:'存在', penalty:[-5,-25,0,-15,-5,-5,-3], msg:"存在性焦虑加剧...开始质疑记忆的可靠性...", req:()=> 智力 > 90 || acquiredTech.includes('upload_theory_v1') || (玄学模式 && 年龄 > 45)} ]; let poss=challenges.filter(c=>(!c.req||c.req())); if(poss.length>0){const chal=poss[Math.floor(Math.random()*poss.length)]; const sevM=玄学模式?(Math.random()*0.7+0.7):1.0; const finalP=chal.penalty.map(p=>Math.round(p*sevM)); 显示通知(`挑战: ${chal.msg}`, "error"); 更新状态(...finalP);} }
+         function triggerMiracleOrEasterEgg() { if(!游戏开始)return; const baseEvents = [ {type:'财富', bonus:[10,15,Math.floor(5000+Math.random()*10000),5,5,10,3], msg:"一笔遗忘的旧投资突然产生巨额回报！"}, {type:'机遇', bonus:[5,15,3000,10,10,20,5], msg:"你被邀请加入一个极具影响力的秘密项目或组织。", req:()=> 声望 > 50 || 智力 > 80}, {type:'健康', bonus:[Math.min(100-健康, 50),25,1000,0,0,5,2], msg:"接受了实验性再生疗法，健康状况大幅改善！", req:()=> 健康 < 60 && 年龄 > 30 && acquiredTech.includes('gene_opt_basic')}, {type:'关系', bonus:[0,35,2000,0,20,25,5], msg:"遇到了能给予你关键支持和深刻理解的知己或导师！", req:()=> 魅力 > 60 && 幸福度 < 75}, {type:'社会', bonus:[5,25,500,5,15,20,3], msg:"你的某项工作或观点意外引发了积极的社会讨论。", req:()=> 传承 > 10 || 声望 > 10}, {type:'科技', bonus:[0,10,15000,35,10,30,25], msg:"解锁了一个古代数据库，获得了失传的关键科技知识！", req:()=> 智力 > 85 || 背景 === 'academic_prodigy'}, {type:'科技', bonus:[5,20,0,20,15,35,20], msg:"你研发的AI产生了自我意识的萌芽，并对你展现出善意！", req:()=> acquiredTech.includes('adv_ai_collab') && 智力 > 90}, {type:'科技', bonus:[10, 10, 5000, 10, 0, 5, 5], msg:"你持有的某项旧技术专利突然变得非常有价值！", req:()=> acquiredTech.length > 1 && 年龄 > 40}, {type:'存在', bonus:[0,0,5000,15,0,10,30], msg:"短暂连接到了银河网络，下载了难以理解但价值连城的数据片段？！", req:()=> 智力 > 98 || (玄学模式 && Math.random() < 0.1)}, {type:'存在', bonus:[10,40,0,25,0,5,15], msg:"体验到一次深度意识扩展，对现实的理解提升到新层次！", req:()=> 幸福度 > 75 && 年龄 > 35}, {type:'玄学', bonus:[Math.floor(Math.random()*11)-5,Math.floor(Math.random()*11)-5,Math.random()*1000,Math.floor(Math.random()*7)-3,0,0,Math.floor(Math.random()*7)-3], msg:"混沌波动导致系统参数发生了一系列微小但有益（或无害）的重置。", req:()=> 玄学模式} ]; const clueEvent = { type: '特殊', bonus: [0,10,0,15,0,5,5], msg: "数据深渊的回响：残破信息片段显示'...循环并非牢笼，而是阶梯...真正的钥匙是...'信息中断。世界底层似乎在对你低语...", req: ()=> 智力 > 88 && 年龄 > 48 && !hasCycleClue && (Math.random() < 0.04 || (玄学模式 && Math.random() < 0.08)) }; let possible = baseEvents.filter(e => (!e.req || e.req())); if (clueEvent.req()){ possible.push(clueEvent); console.log("Cycle Clue Event available!"); } if(possible.length > 0) { const event=possible[Math.floor(Math.random()*possible.length)]; const magM=玄学模式?(Math.random()*0.7+0.7):1.0; const finalB=event.bonus.map(b=>Math.round(b*magM)); 显示通知(`${event.type === '特殊' ? '重大启示' : '机遇'}: ${event.msg}`, "success"); 更新状态(...finalB); if(游戏开始 && event.type === '特殊' && event.msg.includes("世界底层似乎")) { if(!hasCycleClue) { hasCycleClue=true; console.log("Cycle Clue Acquired!"); 显示通知("一种...不同的结局...的可能性在你意识深处展开...","info"); }}} }
+
+        // --- Button Generation (V6.2.4 - Refined Checks) ---
+        function generateButtons() {
+            if (!游戏开始) return;
+            清除按钮(); calculateLifeScore(); lastChanceTriggeredThisTurn = false;
+            const availableActions = []; const actionKeys = Object.keys(actions);
+            const ageBracket = 年龄 < 25 ? 'youth' : 年龄 < 50 ? 'midlife' : 'laterlife';
+            actionKeys.sort(() => 0.5 - Math.random());
+
+            let displayedCount = 0; const maxButtons = 6;
+            let viableActionCount = 0; // Count actions player CAN actually take
+
+            // console.log(`--- Generating Buttons for Age ${年龄} | NC: ${神经币} | Health: ${健康} | Clue: ${hasCycleClue} | Tech: [${acquiredTech.join(',')}] ---`);
+
+            for (const key of actionKeys) {
+                if (key.startsWith('last_chance_')) continue;
+                if (displayedCount >= maxButtons) break;
+                const action = actions[key];
+                if (!action || typeof action.label !== 'function') { continue; }
+
+                try {
+                    let displayChance=1.0;
+                    let isPotentiallyViable = true; // Check if requirements and cost MIGHT be met
+                    let requirementMet = true;
+                    let costMet = true;
+                    let currentDynamicCost = 0;
+
+                     // 1. Requirement Check
+                     if (action.req) { try { requirementMet = Boolean(action.req()); } catch (reqError) { /* console.error(`Req Error (${key}):`, reqError); */ requirementMet = false; } } // Ensure boolean result, default false on error
+                     if (!requirementMet) { isPotentiallyViable = false; displayChance = 0; }
+
+                    // 2. Cost Calculation & Check
+                     if (requirementMet) { // Only calc/check cost if req might be met
+                        try { currentDynamicCost = (typeof action.cost === 'function') ? action.cost() : (action.cost || 0); } catch (costError) { /* console.error(`Cost Calc Error (${key}):`, costError); */ currentDynamicCost = Infinity; } // Use Infinity on error
+                        if (key === '勘破存在代码') { currentDynamicCost = Math.max(20000, Math.floor(神经币*0.25 + 传承*200 + 智力*100 + (100-幸福度)*100 + (100-健康)*150)); }
+                        action.costValue = currentDynamicCost;
+                        if (currentDynamicCost === Infinity || (currentDynamicCost > 0 && 神经币 < currentDynamicCost)) { isPotentiallyViable = false; costMet = false; }
+                     } else { action.costValue = (typeof action.cost === 'function' ? 0 : action.cost) || 0; costMet = false; isPotentiallyViable = false; } // Req failed implies cost not met for viability
+
+
+                    // 3. Display Chance Filtering (Only if potentially viable)
+                     if (isPotentiallyViable) {
+                        const isEarlyAction=['学习基础技能','高等教育','专项技能培训','街头生存','公司基础岗'].includes(key);const isMidAction=['公司晋升','组建家庭','基因优化疗程基础','升级义体专项','破译高阶加密','高风险尖端投资','参与DAO治理实验','创作神经交互艺术','AI个性化教学','垂直农场投资','合成蛋白技术','私人安保升级','算法高频交易','投资军工复合体'].includes(key);const isLateAction=['指导后辈传承知识','撰写发布回忆录','高级健康维续','安享晚年退休','维护数字永生项目','勘破存在代码','建立跨星际贸易链接'].includes(key);const isFutureTech=['高级再生治疗','定制病毒免疫','神经修复手术','神经增强植入实验性','研究意识上传理论','合作开发高级AI','接入量子计算网络','技能矩阵直传','投资近地轨道建设','申请火星殖民抽签','深海资源开采','小行星采矿投资'].includes(key); // Updated lists
+                        if(ageBracket==='youth'){if(isLateAction||isFutureTech)displayChance*=0.03;if(isMidAction)displayChance*=0.1;if(isEarlyAction)displayChance*=1.6;}else if(ageBracket==='midlife'){if(isEarlyAction)displayChance*=0.08;if(isLateAction)displayChance*=0.15;if(isMidAction||isFutureTech)displayChance*=1.5;}else{if(isEarlyAction)displayChance*=0.01;if(isMidAction&&!isFutureTech)displayChance*=0.15;if(isLateAction||isFutureTech)displayChance*=2.2;}
+                        if(背景==='academic_prodigy'&&(isFutureTech||key==='高等教育'||key==='破译高阶加密'))displayChance*=1.6;if(背景==='nomad_tech_scav'&&(key==='升级义体专项'||key==='街头生存'||key==='独立工作 (零工)'))displayChance*=1.5;
+                        if(acquiredTech.length>=1&&isEarlyAction&&key!=='高等教育')displayChance*=0.4;if((智力>75||传承>40)&&isEarlyAction&&key!=='高等教育')displayChance*=0.3;
+                        if(currentDynamicCost>神经币*4&&currentDynamicCost>12000)displayChance*=0.25;if(lifeScore<40&&(key==='高风险尖端投资'||key==='勘破存在代码'||key==='神经增强植入实验性'))displayChance*=0.1;
+                        if(key==='维护数字永生项目'&&!acquiredTech.includes('upload_theory_v1'))displayChance=0;if(key==='接入量子计算网络'&&!(acquiredTech.includes('adv_ai_collab')||背景==='academic_prodigy'))displayChance=0;if(key==='技能矩阵直传'&&!acquiredTech.includes('neural_enhance_v1'))displayChance=0;if(key==='高级再生治疗'&&!acquiredTech.includes('gene_opt_basic'))displayChance=0;if(key==='神经修复手术'&&!acquiredTech.includes('neural_enhance_v1'))displayChance=0;
+                        // Updated/Verified Placeholder Checks: Assume adv_robotics, orbital_logistics, interstellar_logistics are not yet acquirable unless explicitly added.
+                        if(key === '深海资源开采' /* && !acquiredTech.includes('adv_robotics') */ ) displayChance=0.1; // Reduce chance if tech missing, don't hide fully yet
+                        if(key === '小行星采矿投资' /* && !acquiredTech.includes('orbital_logistics') */ ) displayChance=0.1;
+                        if(key === '建立跨星际贸易链接' /* && !acquiredTech.includes('interstellar_logistics') */) displayChance=0.05;
+                        if(key === '勘破存在代码' && !hasCycleClue) displayChance=0;
+                        if (健康 <= 15) { if(key === '紧急冷冻睡眠' || key === '全身义体替换') displayChance=2.0; else if(!key.startsWith('last_chance_')) displayChance *= 0.1; }
+                    } // End displayChance filtering
+
+                    // 4. Add to list & count viability
+                     if (displayChance > 0 && Math.random() < displayChance) {
+                         availableActions.push(action); // Add to potential display list
+                         if (isPotentiallyViable) { viableActionCount++; } // Increment count if passed req/cost
+                         displayedCount++;
+                     }
+                     // Debug Log for filtered actions
+                     // else { console.log(`  - Filtered ${key}: Req=${requirementMet}, Cost=${costMet}, Chance=${displayChance.toFixed(2)}`); }
+
+                } catch (error) { console.error(`ButtonGen Loop Error - ${key}:`, error); }
+            } // End action loop
+
+            // --- Check for Last Chance Trigger ---
+            // console.log(`DEBUG: Viable actions generated: ${viableActionCount}`); // Log final viable count
+            if (viableActionCount <= 0 && !lastChanceTriggeredThisTurn && 年龄 > 18) { // Trigger if ZERO viable options
+                  triggerLastChanceSystem();
+                  return;
+            }
+
+            // --- Create and Append Normal Buttons ---
+            if (lastChanceTriggeredThisTurn) return;
+            availableActions.sort(() => 0.5 - Math.random());
+            availableActions.slice(0, maxButtons).forEach(action => {
+                 const button=document.createElement('button'); button.className='game-button';
+                 let currentCost=action.costValue || 0; let actionKey = ''; for(const k in actions){if(actions[k]===action){actionKey=k;break;}}
+                 const actionLabel=action.label(currentCost); button.innerHTML=`<span>${actionLabel}</span>`;
+                 let reqMet=true; let costMet=true; // Re-check final state for disabling
+                 try{reqMet=(!action.req||action.req());}catch{reqMet=false;}
+                 try{costMet=(!currentCost||神经币>=currentCost);}catch{costMet=false;}
+                 let isDisabled = !(reqMet && costMet);
+                //  console.log(`  -> Render Button: ${actionKey}, Req=${reqMet}, Cost=${costMet}, Disabled=${isDisabled}`); // Final debug before render
+                 button.disabled=isDisabled;
+                 button.title=isDisabled?(costMet === false ? `神经币不足! (${Math.round(currentCost).toLocaleString()} NC)` : "条件不满足"):(action.tt||''); // More specific tooltip
+                 button.onclick=action.fn.bind(action); buttonContainer.appendChild(button);
+             });
+             // Fallback if nothing generated (should be rare now)
+            if (buttonContainer.childElementCount === 0 && !lastChanceTriggeredThisTurn) {
+                console.warn("No buttons generated after filtering, attempting fallback."); // Warn if this happens
+                const fallbackAction=actions['独立工作 (零工)']; if(fallbackAction){ const button=document.createElement('button'); button.className='game-button'; button.innerHTML=`<span>${fallbackAction.label(0)}</span>`; button.disabled=false; button.title=fallbackAction.tt||''; button.onclick=fallbackAction.fn.bind(fallbackAction); buttonContainer.appendChild(button); console.log("Added fallback '零工'."); }
+                else { console.error("PANIC: Fallback '零工' action not found or failed!"); } // Serious issue if fallback fails
+            }
+        }
+
+
+        // --- Last Chance System (Stable) ---
+        function triggerLastChanceSystem() { if(!游戏开始||lastChanceTriggeredThisTurn)return; console.log("Triggering Last Chance System..."); lastChanceTriggeredThisTurn=true; 清除按钮(); messageBox.textContent="你感到前路已尽，选择寥寥无几...也许是时候做出最终抉择了。"; if(Math.random()<0.7){ 显示通知("一线生机？命运给了你最后的机会...","warning"); const chanceActions=['last_chance_lottery','last_chance_accept','last_chance_struggle']; chanceActions.forEach(key=>{const action=actions[key]; if(action){const button=document.createElement('button'); button.className='game-button last-chance-button'; let currentCost=action.cost||0; button.innerHTML=`<span>${action.label(currentCost)}</span>`; button.disabled=(currentCost&&神经币<currentCost); button.title=action.tt||''; button.onclick=action.fn.bind(action); buttonContainer.appendChild(button); }}); }else{ 显示通知("连最后的运气也抛弃了你...","error"); 显示游戏结束("在绝望和无力中，你的意识彻底熄灭了...",false); } }
+
+        // --- Game Flow Start (Stable) ---
+        function 开始游戏() { try { 年龄=Math.floor(Math.random()*(22-16+1))+16; const possBg=Object.values(backgrounds).filter(bg=>年龄>=bg.ageRange[0]&&年龄<=bg.ageRange[1]); const selBg=possBg.length>0?possBg[Math.floor(Math.random()*possBg.length)]:Object.values(backgrounds)[0]; 背景=selBg.id; 健康=100;幸福度=100;神经币=1000;智力=50;魅力=50;声望=0;传承=0;玄学模式=false;当前回合=1;choiceHistory=[];未来预言={剩余回合:0,结果:null};lastStatsForScore='';cachedLifeScore=0; hasCycleClue=false; acquiredTech=[]; const mods=selBg.modifiers; 更新状态(mods.健康||0, mods.幸福度||0, mods.神经币||0, mods.智力||0, mods.魅力||0, mods.声望||0, 0); 神经币=Math.max(200, 神经币); if(predictionChartInstance){predictionChartInstance.destroy();predictionChartInstance=null;} predictionChartContainer.innerHTML='在此处查看未来数据流...'; predictionChartContainer.classList.remove('has-chart'); 游戏开始=true; lastChanceTriggeredThisTurn=false; if(startButton)startButton.style.display='none'; 更新状态(); messageBox.textContent=`链接稳定。你以 ${年龄} 岁 ${selBg.name} 身份苏醒于夜之城，${selBg.description} 命运的齿轮开始转动...`; requestAnimationFrame(()=>{setupBorderMatrix();setupGameMatrix();}); generateButtons(); 显示通知("新的人生循环已启动...", "info"); } catch (e) { console.error("CRITICAL ERROR during 开始游戏:", e); messageBox.textContent = `初始化错误: ${e.message}. 请刷新重试。`; }}
+
+        // --- Game Flow Next Turn / End (Stable) ---
+        function 下一回合() { try { if(!游戏开始)return; messageBox.textContent=getDynamicMessage(); generateButtons(); } catch(e) { console.error("CRITICAL ERROR during 下一回合:", e); 显示游戏结束("系统在推进回合时崩溃...", false); }}
+        const epiphanyMessages = [ "生命如代码，每次运行都可能产生不同的结果。你的选择是变量。", "时间线收束，但记忆和感悟或许能在更高维度留下印记。", "物理定律或许是牢笼，但意识的跃迁从未停止。探索边界。", "存在的意义不在于永恒，而在于有限时空中创造的价值和连接。", "模拟结束，但思考并未停止。你带走了什么？", "成为怎样的人，比抵达何处更重要。即使在冰冷的数字世界也是如此。", "熵增不可逆，但在信息海洋中建立秩序和理解，本身就是奇迹。" ];
+        const gameOverTips = [ "提示：高智力可以解锁更多科技和策略选项。", "提示：魅力和声望在高社交场景中至关重要。", "提示：关注健康和幸福度，它们是长期生存的基础。", "提示：部分稀有事件或科技需要特定背景或先前选择才能触发。", "提示：玄学模式会增加随机性，带来意外的挑战和机遇。", "提示：积累传承不仅影响结局评价，也可能解锁特殊选项。", "提示：不要害怕投资自己，教育和技能培训长期来看是值得的。", "提示：夜之城充满风险，高回报往往伴随高代价。", "提示：探索不同的背景和选择，体验多样的人生路径。" ];
+        function 显示游戏结束(信息, isSpecialEnding = false, isRetirement = false) { if (!游戏开始 && !isSpecialEnding && !isRetirement && !信息.includes("意识彻底熄灭")) return; 游戏开始=false; try { if(matrixIntervalIdBorder!==null){clearInterval(matrixIntervalIdBorder);matrixIntervalIdBorder=null;} if(matrixIntervalIdGame!==null){clearInterval(matrixIntervalIdGame);matrixIntervalIdGame=null;} if(gameCtx){gameCtx.fillStyle='rgba(0,0,0,0.9)';gameCtx.fillRect(0,0,gameCanvas.width,gameCanvas.height);gameCtx.fillStyle='var(--neon-pink)';gameCtx.font='bold 20px "Press Start 2P"';gameCtx.textAlign='center';gameCtx.textBaseline='middle';gameCtx.fillText(">>> CONNECTION ENDED <<<",gameCanvas.width/2,gameCanvas.height/2);} 清除按钮(); if(predictionChartInstance){predictionChartInstance.destroy();predictionChartInstance=null;} predictionChartContainer.innerHTML='时间线终止...'; predictionChartContainer.classList.remove('has-chart'); } catch(e){ console.error("Error during game over cleanup:", e);} let endMessageText = ""; try { if(isSpecialEnding){ endMessageText=`<span style="color:var(--neon-cyan);font-weight:bold;">${信息}</span><hr><i>你离开了熟悉的现实层面，进入了未知的可能性...循环或许已破，或许只是进入了新的嵌套。</i>`; } else { const finalScore=calculateLifeScore(); let reflectiveText=""; if(传承>200)reflectiveText=" 你成为了一个传说，名字刻印在数字星辰之上。"; else if(传承>100)reflectiveText=" 你的思想和成就深刻影响了世界，遗产不朽。"; else if(传承>50)reflectiveText+=` 在历史长河中留下了清晰的印记。`; else reflectiveText+=" 你的存在如同短暂的脉冲，最终消散。"; if(acquiredTech.length>3)reflectiveText+="<br>你深入探索了时代的尖端技术...";if(acquiredTech.includes('adv_ai_collab'))reflectiveText+=" 并与非人智能共同塑造未来...";if(acquiredTech.includes('gene_opt_basic'))reflectiveText+=" 利用生物技术延展了生命的边界...";if(choiceHistory.includes('申请火星殖民抽签')&&!信息.includes('火星'))reflectiveText+="<br>星辰大海的梦想，终究未能亲自踏足..."; if(幸福度<35&&lifeScore>55)reflectiveText+=" <br>世俗的成功难掩灵魂深处的疲惫与空虚..."; if(健康<50&&年龄<55&&!isRetirement)reflectiveText+=" <br>过度燃烧的生命，如同流星般划过夜空..."; if(choiceHistory.includes('勘破存在代码')&&!isSpecialEnding)reflectiveText+=" <br>你曾大胆挑战循环的边界，那份探求本身已是不凡。"; const selectedEpiphany=epiphanyMessages[Math.floor(Math.random()*epiphanyMessages.length)]; const randomTip=gameOverTips[Math.floor(Math.random()*gameOverTips.length)]; if(isRetirement){ endMessageText = `在${年龄}岁，你选择放下奔波，安享晚年。 | 终态评价: ${finalScore.toFixed(1)} | 传承印记: ${传承}.` + reflectiveText + `<br><br><hr><i style="color:var(--text-medium);">${selectedEpiphany}</i><br><br><i style="font-size:0.8em; color: var(--neon-lime);">${randomTip}</i>`; } else { endMessageText = `${信息} | 终年: ${年龄} | 终态评价: ${finalScore.toFixed(1)} | 传承印记: ${传承}.` + reflectiveText + `<br><br><hr><i style="color: var(--text-medium);">${selectedEpiphany}</i><br><br><i style="font-size:0.8em; color: var(--neon-lime);">${randomTip}</i>`; } } messageBox.innerHTML=endMessageText.replace(/\n/g,'<br>'); const rBtn=document.createElement('button');rBtn.className='game-button'; rBtn.innerHTML='<span>重启模拟 / 开启新轮回</span>'; rBtn.onclick=开始游戏; buttonContainer.appendChild(rBtn); } catch(e){ console.error("Error displaying game over message:", e); messageBox.textContent="游戏结束处理异常。请刷新。";} }
+
+        // --- Initial Setup ---
+        document.addEventListener('DOMContentLoaded', () => { try { if(startButton){startButton.onclick=开始游戏;} else { throw new Error("Start button not found"); } if(gameCtx){ gameCtx.fillStyle='#06010c';gameCtx.fillRect(0,0,gameCanvas.width,gameCanvas.height);gameCtx.fillStyle='rgba(0,224,255,0.6)';gameCtx.font='16px Poppins';gameCtx.textAlign='center';gameCtx.textBaseline='middle';gameCtx.fillText('>>> 等待意识链接 <<<',gameCanvas.width/2,gameCanvas.height/2); } else { throw new Error("Game canvas context not found"); } requestAnimationFrame(setupBorderMatrix); } catch (e) { console.error("CRITICAL ERROR during DOMContentLoaded:", e); document.body.innerHTML = `<div style="color:red; padding: 20px; font-family: monospace;">初始化失败: ${e.message}<br>请检查代码或浏览器控制台。</div>`; }});
+
+    </script>
+</body>
+</html>
